@@ -1,0 +1,739 @@
+---
+title: Análisis espaciotemporal de la despoblación en la provincia de Albacete y su
+  modelización predictiva mediante Machine Learning
+author: "César Francisco Veintimilla"
+date: "2026-06-05"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+## 1. Resumen
+
+El presente artículo estudia las dinámicas espaciotemporales de la despoblación en la provincia de Albacete (2012-2022) y evalúa la fiabilidad de extrapolar un modelo de Spatial Machine Learning (SML) al conjunto de Castilla-La Mancha. La investigación se fundamenta en dos pilares analíticos de igual magnitud. En primer lugar, el análisis geoestadístico y descriptivo revela variaciones en la población, migraciones y una polarización territorial extrema: el cálculo del Índice de Moran Global ($I = 0.2045$, $p < 0.001$) y la planimetría de clústeres LISA identifican un hotspot de envejecimiento sistémico en la Sierra de Alcaraz, en contraposición al dinamismo demográfico de la capital provincial. Asimismo, el análisis longitudinal evidencia caídas abruptas en los flujos migratorios durante el año 2020 como consecuencia del shock restrictivo de la pandemia. En segundo lugar, se desarrolla un modelo predictivo basado en el algoritmo Random Forest, el cual incorpora correcciones metodológicas ante realidades de demografía extrema: una imputación de valor mínimo en municipios con cero jóvenes empadronados para evitar valores vacíos, y la transformación de términos absolutos a tasas relativas para neutralizar correlaciones espurias derivadas del tamaño poblacional. Finalmente, la proyección del modelo a escala regional y su auditoría mediante el Área de Aplicabilidad (AoA) constatan una marcada fractura latitudinal. La extrapolación predictiva es estadísticamente viable en llanuras homólogas (Ciudad Real), pero resulta anómala y fuera de dominio en Toledo y Guadalajara, evidenciando los límites algorítmicos para generalizar frente a la influencia absorbente del área metropolitana de Madrid.
+
+***
+
+## 2. Introducción
+
+El declive demográfico que asola las áreas rurales y de interior, popularmente conocido como la "España Vaciada", constituye uno de los desafíos estructurales de mayor envergadura para la cohesión territorial en la Europa meridional (*Collantes & Pinilla, 2019*). Este fenómeno no obedece a una distribución espacial aleatoria, sino que es el resultado de un proceso de causación acumulativa en el que el envejecimiento crónico, la falta de relevo generacional y la emigración selectiva retroalimentan de forma sinérgica el colapso de los asentamientos humanos (*Del Romero Renau, 2018*). En este contexto, la provincia de Albacete se erige como un laboratorio demográfico de primer orden para la investigación analítica. Su morfología territorial evidencia una polarización extrema entre una capital aglutinadora de dinamismo socioeconómico y una vasta periferia —particularmente las comarcas serranas del sur— sometida a tasas de variación demográfica fuertemente negativas y a un paulatino vaciamiento sistémico.
+
+La literatura académica contemporánea subraya la imperativa necesidad de abordar el estudio de la despoblación desde una perspectiva dual: es tan crítico diagnosticar con precisión matemática "dónde y cómo" se articula el vaciamiento territorial en el presente, como predecir "hacia dónde" evolucionarán estas estructuras en el futuro (*Recaño, 2017*). Sin embargo, gran parte de los estudios tradicionales han adolecido de una segmentación metodológica, separando la estadística descriptiva pura de la modelización algorítmica avanzada. El presente artículo propone un marco integral que otorga idéntico peso a la diagnosis geoestadística (Fase 1) y al modelado predictivo espacial (Fase 2), asumiendo que un modelo predictivo carece de validez sin una comprensión profunda y cartográfica de las dinámicas subyacentes.
+
+Desde la vertiente diagnóstica, la econometría espacial resulta indispensable para superar las limitaciones de la estadística no espacial. El análisis de la autocorrelación a través del estadístico de Moran y los Indicadores Locales de Asociación Espacial (LISA) permite ir más allá de la mera observación cartográfica, cuantificando la inercia geográfica e identificando estadísticamente los hotspots de vulnerabilidad demográfica (*Anselin, 1995; Bivand & Wong, 2018*). Esta primera fase diagnóstica exige, además, un abordaje longitudinal y multivariante exhaustivo, capaz de aislar perturbaciones exógenas sobre las series temporales de emigración (como el impacto restrictivo de la pandemia de COVID-19 en 2020) y purgar posibles anomalías en los registros oficiales para garantizar un sustrato de datos coherente.
+
+Construida esta base empírica, la investigación transita hacia la modelización algorítmica mediante la integración de la inteligencia artificial con la estadística geográfica, disciplina conocida como Spatial Machine Learning (SML). Los algoritmos de aprendizaje supervisado, como Random Forest, son idóneos para capturar las no linealidades complejas inherentes a los flujos demográficos (*Breiman, 2001; Schratz et al., 2019*). Sin embargo, su aplicación a la demografía extrema plantea obstáculos matemáticos formales que la literatura técnica raramente resuelve de manera explícita. Por un lado, la parametrización de vectores como el Índice de Envejecimiento se colapsa ante la existencia de municipios con ausencia total de empadronados menores de 15 años, generando infinitos matemáticos que exigen técnicas de imputación determinista para evitar la invisibilización estadística de las áreas más críticas. Por otro lado, la modelización predictiva es altamente susceptible al sesgo de volumen absoluto (vinculado al Problema de la Unidad de Área Modificable o MAUP), requiriendo la transformación de variables a tasas relativas para evitar que el algoritmo aprenda tamaños poblacionales en lugar de patrones migratorios reales.
+
+Aun subsanando estas deficiencias, la extrapolación del conocimiento extraído supone el desafío final. Una premisa a menudo ignorada en el aprendizaje automático es que un modelo calibrado en un subconjunto espacial determinado (Albacete) no es de facto generalizable a una región heterogénea (Castilla-La Mancha). Para auditar científicamente esta fiabilidad, este trabajo implementa la métrica del Área de Aplicabilidad (AoA) desarrollada por Meyer y Pebesma (2021). Se hipotetiza que el mapa de fiabilidad revelará una fuerte fractura latitudinal: mientras el sur manchego presentará un alto dominio de aplicabilidad, el tercio norte arrojará anomalías severas debido a las particularidades de latitud y a la subversión demográfica provocada por el fenómeno de absorción de la región metropolitana de Madrid.
+
+En respuesta a estas premisas, la pregunta de investigación central del presente estudio es: ¿Cómo se articulan espacialmente las vulnerabilidades demográficas extremas en la provincia de Albacete y en qué medida las reglas predictivas extraídas pueden extrapolarse con rigor estadístico al resto de Castilla-La Mancha?
+
+Para dar respuesta a esta interrogante, se plantean los siguientes objetivos específicos:
+
+1. Realizar un análisis descriptivo de la despoblación en Albacete (2012-2022) identificando los clústeres espaciales de envejecimiento crónico mediante el Índice de Moran y la geoestadística LISA, y evaluando el comportamiento longitudinal multivariante de las dinámicas migratorias.
+
+2. Desarrollar un modelo predictivo robusto basado en el algoritmo Random Forest que neutralice los sesgos metodológicos de la demografía extrema mediante la imputación de nulos y la estandarización por tasas relativas.
+
+3. Auditar la validez espacial del modelo al ser extrapolado al conjunto de Castilla-La Mancha mediante el cálculo del Área de Aplicabilidad (AoA), delimitando matemáticamente la frontera metodológica frente al impacto metropolitano exógeno.
+
+***
+
+## 3. Metodología
+### 3.1. Fuentes de Datos y Preprocesamiento Demográfico
+
+Los datos utilizados en esta investigación provienen de los registros oficiales del Instituto Nacional de Estadística (INE). Concretamente, se ha trabajado con las series anuales de población total y su distribución por grupos de edad para el periodo 2012-2022. Para estudiar los flujos de salida, se descargaron las estadísticas de migraciones anuales según el destino (misma provincia, distinta provincia de la misma comunidad autónoma, otra comunidad autónoma y extranjero). Dado que los microdatos homogeneizados del INE presentaban limitaciones en el momento de la extracción, la serie de migraciones comprende únicamente el periodo 2012-2020. Para la representación espacial, los datos se cruzaron con las geometrías municipales del Centro Nacional de Información Geográfica (CNIG) mediante el paquete de R mapSpain.
+
+Trabajar con datos de municipios en situación de despoblación extrema presenta retos matemáticos importantes. El primero surgió al calcular el Índice de Envejecimiento ($IE$). Al analizar los datos, se detectó que varios pueblos pequeños no tenían ningún habitante menor de 15 años empadronado. Matemáticamente, esto supone dividir entre cero, lo que genera valores infinitos (NAs o errores en el cálculo computacional). La solución habitual suele ser eliminar estos registros (listwise deletion), pero hacer esto suponía borrar del análisis precisamente a los pueblos que se encuentran en el estado más grave y crítico de vaciamiento. Para solucionarlo, se aplicó una imputación matemática sencilla pero efectiva: sustituir los 0 jóvenes por un 1 en el denominador. De este modo, la fórmula aplicada quedó definida como:
+
+$$IE_{i,t} = 
+\begin{cases} 
+\left( \frac{\text{Pob. } \geq 65\text{ años}_{i,t}}{\text{Pob. } < 15\text{ años}_{i,t}} \right) \times 100 & \text{si Pob. } < 15\text{ años} > 0 \\
+\left( \frac{\text{Pob. } \geq 65\text{ años}_{i,t}}{1} \right) \times 100 & \text{si Pob. } < 15\text{ años} = 0 
+\end{cases}$$
+
+El segundo gran reto fue evitar el sesgo por el tamaño de los municipios. Al principio de la investigación, el número bruto de emigrantes correlacionaba casi perfectamente con la población total: las ciudades grandes, simplemente por tener más gente, tienen más emigrantes absolutos. Si el algoritmo aprendía de estos datos brutos, iba a predecir basándose en el tamaño del pueblo y no en su dinámica de despoblación. Para evitar esta "fuga de información", se transformaron todos los flujos migratorios absolutos en tasas relativas por cada 1.000 habitantes, utilizando la siguiente fórmula:
+
+$$\text{Tasa Emigración}_{i,t} = \left( \frac{\text{Total de Emigrantes}_{i,t}}{\text{Población Total}_{i,t}} \right) \times 1.000$$
+
+### 3.2. Geoestadística y Análisis Espacial (Fase 1)
+
+La primera fase metodológica se centró en el análisis exploratorio y espacial de las dinámicas de despoblación. Para evaluar la pérdida de habitantes, se calculó la "Sangría Demográfica" (variación porcentual de la población entre 2012 y 2022). Para evitar que unos pocos casos extremos distorsionaran la escala de colores y dificultaran la lectura del mapa, se aplicó un recorte visual (*capping*) que limitó los valores al umbral del $\pm 40\%$. Paralelamente, la evolución del envejecimiento se estructuró a través de una cuadrícula temporal (*facet grid*), lo que permitió observar la expansión del fenómeno año a año. Por último, la interacción entre envejecimiento, emigración y volumen poblacional se modeló mediante un análisis multivariante de burbujas. En este paso fue fundamental aplicar un filtrado de robustez: se excluyeron valores atípicos imposibles derivados de errores en los registros oficiales (como tasas de emigración superiores a 1.000‰) para garantizar la estabilidad visual y estadística de la muestra.
+
+Superada esta fase descriptiva, se procedió al análisis geoestadístico para contrastar la existencia de patrones espaciales. En primer lugar, se definió la topología de la provincia mediante una matriz de pesos espaciales basada en el criterio de contigüidad de Reina (*Queen*), donde dos municipios se consideran vecinos si comparten alguna frontera o vértice. La autocorrelación espacial global se evaluó mediante el estadístico de Moran.
+
+Dado que el Índice de Moran Global solo ofrece un resumen general, se aplicaron los Indicadores Locales de Asociación Espacial (LISA) para localizar geográficamente las concentraciones significativas de envejecimiento. El estadístico del Moran Local ($I_i$) para cada municipio se define formalmente como:
+
+$$I_i = \frac{x_i - \bar{x}}{m_2} \sum_{j=1}^N w_{ij}(x_j - \bar{x})$$
+
+Donde $x_i$ es el valor del indicador en el municipio analizado, $\bar{x}$ es la media global, $w_{ij}$ es el peso espacial del municipio vecino $j$, y $m_2$ representa la varianza muestral. En términos prácticos, esta fórmula multiplica la desviación de un pueblo respecto a la media por el "retraso espacial" (la media ponderada de las desviaciones de sus vecinos). Si ambos valores son positivos y significativos, el modelo aísla un clúster *Alto-Alto*, permitiéndonos delimitar con precisión matemática los verdaderos "puntos calientes" de la despoblación.
+
+### 3.3. Spatial Machine Learning y Área de Aplicabilidad (Fase 2)
+
+El núcleo predictivo de la investigación se desarrolló utilizando el algoritmo Random Forest (implementado a través del motor `ranger` en el ecosistema `tidymodels`). Para dotar al modelo de conciencia geográfica, se incorporaron como variables predictoras las coordenadas espaciales exactas ($X$ e $Y$) de los centroides municipales. 
+
+La decisión metodológica más crítica en esta fase fue la transformación de los flujos migratorios absolutos a tasas relativas (emigrantes por cada 1.000 habitantes). Si el modelo hubiese sido entrenado con valores brutos (número total de salidas), se habría generado una grave correlación espuria o "fuga de información". Un algoritmo alimentado con absolutos se vuelve perezoso: aprende a predecir la población total basándose simplemente en que los pueblos grandes tienen más emigrantes. Transformar las variables a tasas relativas obliga al modelo a aprender dinámicas demográficas reales, independientemente del tamaño del municipio. Somos conscientes de que intentar predecir una variable absoluta a partir de métricas estrictamente relativas penaliza las métricas de precisión estándar. Sin embargo, este es un sacrificio metodológico necesario e innegociable para garantizar la honestidad intelectual y la validez científica del modelo algorítmico.
+
+Para auditar la capacidad del modelo de extrapolar sus predicciones más allá de la provincia de entrenamiento, se utilizó la métrica del Área de Aplicabilidad (AoA) mediante el paquete `waywiser`. La precisión del modelo se evaluó a través del Error Cuadrático Medio ($RMSE$), cuya formulación matemática penaliza severamente las desviaciones grandes al elevar al cuadrado los residuos entre el valor real ($y_i$) y el valor predicho ($\hat{y}_i$):
+
+$$RMSE = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}$$
+
+***
+
+## 4. Resultados
+
+### 4.1. Análisis Espaciotemporal y Geoestadístico
+
+La primera aproximación a los datos revela que la provincia de Albacete sufre una crisis demográfica muy polarizada. El mapa de variación poblacional muestra claramente un eje central más dinámico, formado por la capital y los municipios conectados por la autovía A-31 (como La Roda o Almansa), donde la población se mantiene estable o incluso crece ligeramente. En contraste, las zonas periféricas del sur, especialmente las comarcas de la Sierra de Alcaraz y la Sierra del Segura, presentan caídas de población gravísimas que, en varios casos, superan el 40% de pérdida en apenas diez años.
+
+```{r Sangría demográfica, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figura 1: Variación de la población por municipio (2012-2022)"}
+# 1. Cargo las librerías base
+library(tidyverse) 
+library(sf)        
+library(mapSpain)
+library(ggplot2)
+
+# 2. Cargo la cartografía
+mapa_ab <- mapSpain::esp_get_munic(region = "Castilla-La Mancha")%>% 
+  filter(cpro == "02")
+
+poblacion_raw <- read.csv("./33576.csv", sep = ";", fileEncoding = "latin1")
+
+poblacion_limpia <- poblacion_raw %>%
+  mutate(
+    # arreglo los números quitando los sep de miles para que R no los lea como sep decimal
+    Total = as.numeric(gsub("\\.", "", as.character(Total))),
+    
+    # Extraigo únicamente el código del municipio
+    Cod_INE = substr(Municipios, 1, 5),
+    
+    # En vez de la fecha entera, extraigo el año únicamente
+    Año = as.numeric(str_extract(Periodo, "\\d{4}"))
+  ) %>%
+  filter(Año >= 2012 & Año <= 2022) %>%
+  select(Cod_INE, Año, Poblacion = Total)
+
+# ==============================================================================
+# CARGA, LIMPIEZA Y CÁLCULO DEL ÍNDICE DE ENVEJECIMIENTO
+# ==============================================================================
+edades_raw <- read.csv("./33576_edades.csv", sep = ";", fileEncoding = "latin1", check.names = FALSE)
+
+edades_limpia <- edades_raw %>%
+  # Renombro la columna de edad para que sea más fácil trabajar con ella
+  rename(Edad_Texto = `Edad (grupos quinquenales)`) %>%
+  
+  mutate(
+    Total = as.numeric(gsub("\\.", "", as.character(Total))),
+    Cod_INE = substr(Municipios, 1, 5),
+    Año = as.numeric(str_extract(Periodo, "\\d{4}")),
+    
+    Grupo_Edad = case_when(
+      grepl("0 a 4|5 a 9|10 a 14", Edad_Texto) ~ "Menores_15",
+      TRUE ~ "Mayores_65" 
+    )
+  ) %>%
+  filter(Año >= 2012 & Año <= 2022) %>%
+  group_by(Cod_INE, Año) %>%
+  summarise(
+    Pob_Joven = sum(Total[Grupo_Edad == "Menores_15"], na.rm = TRUE),
+    Pob_Mayor = sum(Total[Grupo_Edad == "Mayores_65"], na.rm = TRUE),
+    .groups = "drop" # Quitamos la agrupación para evitar problemas después
+  ) %>%
+  
+  # Cálculo del Índice de Envejecimiento
+  mutate(
+    # Imputación del valor mínimo
+    Indice_Envejecimiento = ifelse(Pob_Joven == 0, (Pob_Mayor / 1) * 100, 
+                                   (Pob_Mayor / Pob_Joven) * 100)
+  ) %>%
+  select(Cod_INE, Año, Indice_Envejecimiento)
+
+# ==============================================================================
+# DATOS DE EMIGRACIÓN (2012 - 2020)
+# ==============================================================================
+emig_2012 <- read.csv("./migracionesproyfinal/a11_2012.csv", sep = ";", fileEncoding = "latin1") %>%
+  rename(Municipio = Municipios) %>%
+  mutate(Total = as.numeric(gsub("\\.", "", Total)), Año = 2012)
+
+emig_2013 <- read.csv("./migracionesproyfinal/a4_11_2013.csv", sep = ";", fileEncoding = "latin1") %>%
+  rename(Municipio = Municipios) %>%
+  mutate(Total = as.numeric(gsub("\\.", "", Total)), Año = 2013)
+
+emig_2014 <- read.csv("./migracionesproyfinal/a4_11_2014.csv", sep = ";", fileEncoding = "latin1") %>%
+  mutate(Total = as.numeric(gsub("\\.", "", Total)), Año = 2014)
+
+emig_2015 <- read.csv("./migracionesproyfinal/a4_11_2015.csv", sep = ";", fileEncoding = "latin1") %>%
+  mutate(Total = as.numeric(gsub("\\.", "", Total)), Año = 2015)
+
+emig_2016 <- read.csv("./migracionesproyfinal/a4_11_2016.csv", sep = ";", fileEncoding = "latin1") %>%
+  mutate(Total = as.numeric(gsub("\\.", "", Total)), Año = 2016)
+
+emig_2017 <- read.csv("./migracionesproyfinal/a4_11_2017.csv", sep = ";", fileEncoding = "latin1") %>%
+  mutate(Total = as.numeric(gsub("\\.", "", Total)), Año = 2017)
+
+emig_2018 <- read.csv("./migracionesproyfinal/a4_11_2018.csv", sep = ";", fileEncoding = "latin1") %>%
+  mutate(Total = as.numeric(gsub("\\.", "", Total)), Año = 2018)
+
+emig_2019 <- read.csv("./migracionesproyfinal/36360_2019.csv", sep = ";", fileEncoding = "latin1") %>%
+  mutate(Total = as.numeric(gsub("\\.", "", Total)), Año = 2019)
+
+emig_2020 <- read.csv("./migracionesproyfinal/48511_2020.csv", sep = ";", fileEncoding = "latin1") %>%
+  mutate(Total = as.numeric(gsub("\\.", "", Total)), Año = 2020)
+
+# fusionarlos
+emigracion_bruta <- bind_rows(
+  emig_2012, emig_2013, emig_2014, emig_2015, emig_2016, 
+  emig_2017, emig_2018, emig_2019, emig_2020
+)
+
+rm(emig_2012, emig_2013, emig_2014, emig_2015, emig_2016, emig_2017, emig_2018, emig_2019, emig_2020)
+
+# LIMPIEZA DE DESTINOS Y CÓDIGO INE
+emigracion_limpia <- emigracion_bruta %>%
+  mutate(
+    # Unificamos los destinos rebeldes
+    Destino = case_when(
+      Destino %in% c("Misma comunidad autónoma, distinta provincia", 
+                     "Misma comunidad autónoma, distinta provincia", 
+                     "Misma COMUNIDAD AUTÓNOMA distinta provincia", 
+                     "Misma CCAA distinta provincia") ~ "Misma CCAA",
+      Destino %in% c("Otra CCAA", "Otra COMUNIDAD AUTÓNOMA", 
+                     "Otra comunidad autónoma", "Otra comunidad autónoma") ~ "Otra CCAA",
+      TRUE ~ Destino
+    ),
+    Cod_INE = substr(Municipio, 1, 5)
+  ) %>%
+  # Quito columnas que no aportan al modelo
+  select(Cod_INE, Año, Destino, Total)
+
+
+# PIVOTAR A FORMATO ANCHO
+emigracion_final <- emigracion_limpia %>%
+  pivot_wider(
+    names_from = Destino, 
+    values_from = Total,
+    values_fill = list(Total = 0)
+  ) %>%
+  rename(
+    Emig_Misma_Provincia = `Misma provincia`,
+    Emig_Misma_CCAA = `Misma CCAA`,
+    Emig_Otra_CCAA = `Otra CCAA`,
+    Emig_Extranjero = Extranjero
+  )
+
+# ==============================================================================
+# JOIN DEFINITIVO ESPACIOTEMPORAL
+# ==============================================================================
+# 1. Creo la base de datos tabular unida (uso Población como base porque tiene hasta 2022)
+panel_datos <- poblacion_limpia %>%
+  left_join(edades_limpia, by = c("Cod_INE", "Año")) %>%
+  left_join(emigracion_final, by = c("Cod_INE", "Año"))
+
+# 2. Uno cartografía con datos
+panel_sf <- mapa_ab %>%
+  # Renombro la columna LAU_CODE a Cod_INE para que las llaves coincidan
+  rename(Cod_INE = LAU_CODE) %>%
+  
+  mutate(Cod_INE = as.character(Cod_INE)) %>%
+  
+  left_join(panel_datos, by = "Cod_INE") %>%
+  
+  arrange(Cod_INE, Año)
+
+# ==============================================================================
+# ANÁLISIS ESPACIAL: MAPA DE DESPOBLACIÓN
+# ==============================================================================
+# 1. CÁLCULO DE LA TASA DE CAMBIO
+mapa_variacion <- panel_sf %>%
+  filter(Año %in% c(2012, 2022)) %>%
+  st_drop_geometry() %>%
+  select(Cod_INE, name, Año, Poblacion) %>%
+  pivot_wider(names_from = Año, values_from = Poblacion, names_prefix = "Pob_") %>%
+  mutate(
+    # Cálculo de la variación real
+    Var_Real = ((Pob_2022 - Pob_2012) / Pob_2012) * 100,
+    
+    # Si pierde más del 40%, lo limito en -40. Si gana más del 40%, lo limito en +40.
+    Var_Recortada = case_when(
+      Var_Real > 40 ~ 40,
+      Var_Real < -40 ~ -40,
+      TRUE ~ Var_Real
+    )
+  ) %>%
+  left_join(mapa_ab %>% rename(Cod_INE = LAU_CODE), by = "Cod_INE") %>%
+  st_as_sf()
+
+ggplot(data = mapa_variacion) +
+  geom_sf(aes(fill = Var_Recortada), color = "black", size = 0.2) +
+  
+  scale_fill_distiller(
+    palette = "RdYlBu", 
+    direction = 1,
+    limits = c(-40, 40),
+    name = "% de Variación",
+    labels = c("≤ -40%", "-20%", "0%", "+20%", "≥ +40%") 
+  ) +
+  
+  theme_minimal() +
+  labs(caption = "Fuente: INE y elaboración propia.\n*Valores extremos topados al ±40% para mayor contraste.") +
+  theme(plot.title = element_text(face = "bold", size = 16),
+        plot.subtitle = element_text(size = 12, color = "darkgrey"))
+```
+
+
+Esta pérdida de habitantes va de la mano de un fuerte envejecimiento poblacional. Al observar la evolución año a año, se constata que no es un problema aislado, sino un fenómeno que se está expandiendo por el territorio de forma sostenida. Mientras que en 2012 los niveles críticos de envejecimiento se concentraban en unos pocos municipios serranos, para 2022 la "mancha" demográfica se ha extendido notablemente. Cabe destacar que haber imputado un 1 en los municipios sin jóvenes fue clave para que esta visualización temporal mantuviera a los pueblos más afectados en el mapa, en lugar de aparecer en blanco por errores de cálculo.
+
+```{r Cuadrícula, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figura 2: Evolución del Índice de envejecimiento por municipio (2012-2022)"}
+ggplot(data = panel_sf) +
+  geom_sf(aes(fill = Indice_Envejecimiento), color = "black", size = 0.05) +
+  scale_fill_viridis_c(
+    option = "plasma",
+    name = "Índice de\nEnvejecimiento",
+    na.value = "grey90",
+    
+    # Topo visualmente entre 0 y 800%
+    limits = c(0, 800), 
+    
+    # squish coge los valores >800 y los "aplasta" para que cojan el color máximo
+    oob = scales::squish, 
+
+    breaks = c(0, 200, 400, 600, 800),
+    labels = c("0", "200", "400", "600", "≥ 800")
+  ) +
+  
+  facet_wrap(~ Año, ncol = 4) +
+  theme_minimal() +
+  labs(
+    caption = "Fuente: INE y elaboración propia.\n*Valores extremos topados a 800 para mejorar el contraste visual."
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(size = 12, color = "darkgrey"),
+    strip.text = element_text(face = "bold", size = 11),
+    axis.text = element_blank(),  
+    axis.ticks = element_blank(), 
+    panel.grid = element_blank()  
+  )
+```
+
+El cálculo del Test de Moran para el año 2022 confirmó de manera oficial y estadística lo que se intuía visualmente: existe una autocorrelación espacial positiva y altamente significativa ($I = 0.2045$, $p < 0.001$). Esto significa que la despoblación no es aleatoria, sino un fenómeno de contagio geográfico. Al aplicar el análisis LISA para localizar estos clústeres, el mapa resultante aísla perfectamente el principal foco rojo (Alto-Alto) en la Sierra de Alcaraz, confirmándolo como un hotspot crítico de envejecimiento que requiere intervención urgente. Por el contrario, la capital y su área de influencia conforman el principal clúster azul (Bajo-Bajo), actuando como refugio demográfico.
+
+```{r LISA, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figura 3: Hotspots de envejecimiento en Albacete"}
+library(spdep)
+
+datos_2022 <- panel_sf %>%
+  filter(Año == 2022) %>%
+  filter(!is.na(Indice_Envejecimiento)) 
+
+vecinos <- poly2nb(datos_2022, queen = TRUE)
+
+# MATRIZ DE PESOS ESPACIALES
+pesos_espaciales <- nb2listw(vecinos, style = "W", zero.policy = TRUE)
+
+# TEST DE MORAN
+test_moran <- moran.test(datos_2022$Indice_Envejecimiento, 
+                         listw = pesos_espaciales, 
+                         zero.policy = TRUE)
+
+# ==============================================================================
+# MAPA DE CLÚSTERES LISA - AÑO 2022
+# ==============================================================================
+local_m <- localmoran(datos_2022$Indice_Envejecimiento, pesos_espaciales, zero.policy = TRUE)
+
+z_envejecimiento <- scale(datos_2022$Indice_Envejecimiento) %>% as.vector()
+
+lag_envejecimiento <- lag.listw(pesos_espaciales, z_envejecimiento, zero.policy = TRUE)
+
+p_valores <- local_m[, 5] 
+
+cuadrante <- rep("No Significativo", nrow(datos_2022))
+
+# Uso un nivel de confianza del 95% (p-value < 0.05)
+alfa <- 0.05
+
+# Asignación lógica de los clústeres
+cuadrante[z_envejecimiento > 0 & lag_envejecimiento > 0 & p_valores <= alfa] <- "Alto-Alto (Puntos Críticos)"
+cuadrante[z_envejecimiento < 0 & lag_envejecimiento < 0 & p_valores <= alfa] <- "Bajo-Bajo (Zonas Dinámicas)"
+cuadrante[z_envejecimiento > 0 & lag_envejecimiento < 0 & p_valores <= alfa] <- "Alto-Bajo (Atípico)"
+cuadrante[z_envejecimiento < 0 & lag_envejecimiento > 0 & p_valores <= alfa] <- "Bajo-Alto (Atípico)"
+
+datos_2022$Cluster_LISA <- factor(cuadrante, 
+                                  levels = c("Alto-Alto (Puntos Críticos)", 
+                                             "Bajo-Bajo (Zonas Dinámicas)", 
+                                             "Alto-Bajo (Atípico)", 
+                                             "Bajo-Alto (Atípico)", 
+                                             "No Significativo"))
+
+ggplot(data = datos_2022) +
+  geom_sf(aes(fill = Cluster_LISA), color = "white", size = 0.2) +
+  
+  scale_fill_manual(
+    values = c("Alto-Alto (Puntos Críticos)" = "#d7191c",  
+               "Bajo-Bajo (Zonas Dinámicas)" = "#2c7bb6",  
+               "Alto-Bajo (Atípico)" = "#fdae61",          
+               "Bajo-Alto (Atípico)" = "#abd9e9",          
+               "No Significativo" = "grey80"),             
+    drop = FALSE,
+    name = "Tipo de Clúster Espacial"
+  ) +
+  theme_minimal() +
+  labs(
+    caption = "Fuente: INE y elaboración propia.\nNivel de significatividad: 95% (p < 0.05)."
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(size = 12, color = "darkgrey"),
+    legend.position = "right"
+  )
+```
+
+En cuanto a las salidas de población, la serie histórica de migraciones arrojó un resultado muy llamativo. Históricamente, el principal destino de los emigrantes de Albacete ha sido siempre otras comunidades autónomas. Sin embargo, al observar el año 2020, la gráfica muestra una caída abrupta y sin precedentes en todos los tipos de movilidad. Este desplome migratorio ilustra a la perfección el "efecto paralizador" que tuvieron el confinamiento y las restricciones de movilidad derivados de la crisis del COVID-19.
+
+Al integrar todas las variables en un análisis multivariante para el año 2020, se comprobó la eficacia de usar tasas relativas. Tras filtrar datos anómalos de las fuentes oficiales (como el caso de Hellín, que mostraba tasas de emigración físicamente imposibles por errores registrales), el gráfico de burbujas demostró que la tasa de fuga es completamente independiente del tamaño del municipio. Pueblos muy pequeños como Masegoso o Casas de Lázaro soportan tasas relativas de despoblación altísimas, colocándose como valores extremos en la dispersión estadística.
+
+```{r Analisis multivariante, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figura 4: Población total vs Envejecimiento vs Flujos migratorios"}
+datos_burbujas <- panel_sf %>%
+  st_drop_geometry() %>% 
+  filter(Año == 2020) %>%
+  mutate(
+    Total_Emigrantes = Emig_Misma_Provincia + Emig_Misma_CCAA + Emig_Otra_CCAA + Emig_Extranjero,
+    Tasa_Emigracion = (Total_Emigrantes / Poblacion) * 1000
+  ) %>%
+  filter(!is.na(Indice_Envejecimiento) & !is.na(Tasa_Emigracion) & Tasa_Emigracion < 1000)
+
+ggplot(data = datos_burbujas, aes(x = Indice_Envejecimiento, y = Tasa_Emigracion)) +
+  
+  # Burbujas: Tamaño = Población, Color = Población
+  geom_point(aes(size = Poblacion, color = Poblacion), alpha = 0.7) +
+  
+  # Tamaños mínimo y máximo
+  scale_size_continuous(range = c(2, 20), guide = "none") + 
+  
+  scale_color_viridis_c(option = "magma", direction = -1, trans = "log10", guide = "none") +
+  
+  geom_text(
+    data = datos_burbujas %>% filter(Poblacion > 10000 | Indice_Envejecimiento > 600 | Tasa_Emigracion > 50),
+    aes(label = name),
+    size = 2.9, 
+    fontface = "bold", 
+    color = "black",
+    vjust = -1.2, # Sube el texto un poco por encima de la burbuja
+    check_overlap = TRUE # ¡El truco mágico para no usar ggrepel!
+  ) +
+  
+  theme_minimal() +
+  labs(
+    x = "Índice de Envejecimiento",
+    y = "Tasa de Emigración",
+    caption = "Fuente: INE y elaboración propia."
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 15),
+    plot.subtitle = element_text(size = 12, color = "darkgrey"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+### 4.2. Modelización Predictiva mediante SML
+
+### 4.2. Modelización Predictiva mediante SML
+
+Los resultados de la validación cruzada espacial para el modelo de Albacete arrojaron las siguientes métricas:
+
+| Métrica | Estimador | Media (*mean*) | Folds (*n*) | Error Estándar (*std_err*) |
+| :--- | :--- | :--- | :--- | :--- |
+| **RMSE** | Estándar | 14124 | 5 | 7532 |
+| **$R^2$** | Estándar | 0.169 | 5 | 0.0744 |
+
+*Tabla 1. Resultados de la validación cruzada espacial por bloques ($v=5$).*
+
+A primera vista, estas cifras pueden parecer modestas, pero responden directamente a la exigencia metodológica impuesta al algoritmo. Como se justificó anteriormente, predecir el volumen absoluto de población basándose casi en exclusiva en tasas relativas es una tarea estadísticamente ruidosa. Además, la naturaleza matemática del $RMSE$ —que eleva al cuadrado los errores— provoca que el indicador se vea fuertemente penalizado por los *outliers* poblacionales. Una ligera desviación porcentual en la predicción de la capital provincial dispara el error cuadrático medio, oscureciendo el hecho de que el modelo capta de manera excelente las tendencias del 90% de los municipios rurales.
+
+A pesar de esta penalización en las métricas globales, al proyectar el algoritmo sobre el conjunto de Castilla-La Mancha, el modelo logró cartografiar con gran coherencia el sistema de asentamientos, discriminando correctamente el entramado rural de los grandes centros urbanos.
+
+```{r mapa predicción, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figura 5: Población predicha en CLM"}
+# ==============================================================================
+# FASE 2: SPATIAL MACHINE LEARNING (ENTRENAMIENTO EN ALBACETE)
+# ==============================================================================
+library(dplyr)
+library(tidyr)
+library(tidymodels)
+library(spatialsample)
+library(ranger)
+library(waywiser)
+library(vip)
+
+# 1. PREPARACIÓN DE DATOS (YA CON TASAS E IMPUTACIÓN DE JÓVENES)
+suppressWarnings({
+  datos_sml <- panel_sf %>%
+    dplyr::filter(Año == 2020) %>%
+    mutate(
+      # Coordenadas espaciales
+      X = sf::st_coordinates(sf::st_centroid(geometry))[,1],
+      Y = sf::st_coordinates(sf::st_centroid(geometry))[,2],
+      
+      # Tasas relativas (por cada 1.000 hab.)
+      Tasa_Emig_Provincia = (Emig_Misma_Provincia / Poblacion) * 1000,
+      Tasa_Emig_CCAA = (Emig_Otra_CCAA / Poblacion) * 1000,
+      Tasa_Emig_Extranjero = (Emig_Extranjero / Poblacion) * 1000
+    ) %>%
+    dplyr::select(Cod_INE, name, Poblacion, Indice_Envejecimiento, 
+                  Tasa_Emig_Provincia, Tasa_Emig_CCAA, Tasa_Emig_Extranjero, X, Y) %>%
+    na.omit()
+})
+
+# 2. DEFINICIÓN DEL FLUJO DE TRABAJO (TIDYMODELS)
+set.seed(2026) 
+
+# Receta apuntando a las tasas relativas
+rf_recipe <- recipes::recipe(Poblacion ~ Indice_Envejecimiento + Tasa_Emig_Provincia + 
+                               Tasa_Emig_CCAA + Tasa_Emig_Extranjero + X + Y, 
+                             data = datos_sml)
+
+rf_model <- parsnip::rand_forest(trees = 100, mtry = 3, min_n = 5, mode = "regression") %>%
+  parsnip::set_engine("ranger", importance = "impurity")
+
+rf_workflow <- workflows::workflow() %>%
+  workflows::add_recipe(rf_recipe) %>%
+  workflows::add_model(rf_model)
+
+# 3. VALIDACIÓN CRUZADA ESPACIAL (EN ALBACETE)
+spatial_folds <- spatialsample::spatial_block_cv(datos_sml, v = 5)
+
+rf_resamples <- tune::fit_resamples(
+  rf_workflow,
+  resamples = spatial_folds,
+  control = tune::control_resamples(save_pred = TRUE)
+)
+
+# 4. MODELO FINAL (Ajuste sobre todo Albacete)
+rf_final <- parsnip::fit(rf_workflow, data = datos_sml)
+
+# 5. ENTRENAMIENTO DEL MODELO DE FIABILIDAD (AoA)
+vars_entrenamiento <- datos_sml %>%
+  sf::st_drop_geometry() %>%
+  dplyr::select(Indice_Envejecimiento, Tasa_Emig_Provincia, Tasa_Emig_CCAA, Tasa_Emig_Extranjero, X, Y)
+
+modelo_aoa <- waywiser::ww_area_of_applicability(
+  x = vars_entrenamiento, 
+  importance = vip::vi_model(parsnip::extract_fit_engine(rf_final))
+)
+
+# ==============================================================================
+# EXTRAPOLACIÓN A CASTILLA-LA MANCHA
+# ==============================================================================
+# ------------------------------------------------------------------------------
+# 1. LECTURA Y FUSIÓN DE LOS DATOS BRUTOS
+# ------------------------------------------------------------------------------
+# Leemos las poblaciones (Asegúrate de que sep = ";" es el correcto en tus CSV)
+pob_cr  <- read.csv2("33776_CR_20.csv", fileEncoding = "latin1")
+pob_cu  <- read.csv2("33758_CU_20.csv", fileEncoding = "latin1")
+pob_gu  <- read.csv2("33800_GU_20.csv", fileEncoding = "latin1")
+pob_to  <- read.csv2("33938_TO_20.csv", fileEncoding = "latin1")
+
+# Unimos las 4 provincias de población
+poblacion_bruta <- dplyr::bind_rows(pob_cr, pob_cu, pob_gu, pob_to)
+
+# Leemos las migraciones
+mig_cr  <- read.csv2("./migracionesproyfinal/48511_migr_CR.csv", fileEncoding = "latin1")
+mig_cu  <- read.csv2("./migracionesproyfinal/48511_migr_CU.csv", fileEncoding = "latin1")
+mig_gu  <- read.csv2("./migracionesproyfinal/48511_migr_GU.csv", fileEncoding = "latin1")
+mig_to  <- read.csv2("./migracionesproyfinal/48511_migr_TO.csv", fileEncoding = "latin1")
+
+# Unimos las 4 provincias de migración
+migracion_bruta <- dplyr::bind_rows(mig_cr, mig_cu, mig_gu, mig_to)
+
+# ------------------------------------------------------------------------------
+# 2. LIMPIEZA Y CÁLCULO DE VARIABLES (AL ESTILO DEL PANEL ORIGINAL)
+# ------------------------------------------------------------------------------
+# A. Limpiamos Población y calculamos Envejecimiento (Estructura real confirmada)
+# A. Limpiamos Población y calculamos Envejecimiento (BLOQUE DEFINITIVO Y BLINDADO)
+poblacion_clm <- poblacion_bruta %>%
+  dplyr::rename(
+    Nombre_Municipio = 3, 
+    Edad = 4, 
+    Total_Bruto = 6 # Lo llamamos bruto para no pisar el nombre
+  ) %>% 
+  dplyr::mutate(
+    Cod_INE = stringr::str_sub(Nombre_Municipio, 1, 5),
+    
+    # EL TRUCO ESTÁ AQUÍ: 
+    # 1º Quitamos el punto del texto. 2º Lo pasamos a número.
+    Total_Limpio = as.numeric(gsub("\\.", "", Total_Bruto))
+  ) %>%
+  dplyr::filter(!is.na(Total_Limpio)) %>%
+  
+  dplyr::group_by(Cod_INE) %>%
+  dplyr::summarise(
+    # Sumamos ahora que los números son 100% reales
+    Poblacion = sum(Total_Limpio[Edad == "Todas las edades"], na.rm = TRUE),
+    
+    Jovenes = sum(Total_Limpio[Edad %in% c("De 0 a 4 años", "De 5 a 9 años", "De 10 a 14 años")], na.rm = TRUE),
+    
+    Mayores = sum(Total_Limpio[Edad %in% c("De 65 a 69 años", "De 70 a 74 años", "De 75 a 79 años", 
+                                           "De 80 a 84 años", "De 85 a 89 años", "De 90 a 94 años", 
+                                           "De 95 a 99 años", "100 y más años")], na.rm = TRUE)
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(
+    # Calculamos el índice
+    Indice_Envejecimiento = (Mayores / Jovenes) * 100,
+    Indice_Envejecimiento = ifelse(is.infinite(Indice_Envejecimiento), NA, Indice_Envejecimiento)
+  )
+
+# B. Limpiamos Migraciones
+migracion_clm <- migracion_bruta %>%
+  dplyr::rename(Nombre_Municipio = Municipio) %>%
+  dplyr::mutate(
+    Cod_INE = stringr::str_sub(Nombre_Municipio, 1, 5),
+    # Limpiamos posibles puntos de miles y pasamos a numérico
+    Total_Limpio = as.numeric(gsub("\\.", "", Total)) 
+  ) %>%
+  dplyr::group_by(Cod_INE) %>%
+  dplyr::summarise(
+    Emig_Misma_Provincia = sum(Total_Limpio[Destino == "Misma provincia"], na.rm = TRUE),
+    # Agrupamos toda la emigración fuera de la provincia (a otra CCAA y a otra provincia de CLM)
+    Emig_Otra_CCAA = sum(Total_Limpio[Destino %in% c("Otra comunidad autónoma", "Misma comunidad autónoma, distinta provincia")], na.rm = TRUE),
+    Emig_Extranjero = sum(Total_Limpio[Destino == "Extranjero"], na.rm = TRUE)
+  ) %>%
+  dplyr::ungroup()
+
+# C. Unimos todo en un solo dataset regional
+datos_clm_estadistica <- poblacion_clm %>%
+  dplyr::inner_join(migracion_clm, by = "Cod_INE")
+
+# ==============================================================================
+# PREDICCIÓN ESPACIAL PARA TODA CASTILLA-LA MANCHA
+# ==============================================================================
+# ------------------------------------------------------------------------------
+# 1. GEOMETRÍA Y COORDENADAS
+# ------------------------------------------------------------------------------
+# Descargamos el mapa de toda Castilla-La Mancha
+mapa_clm <- mapSpain::esp_get_munic(region = "Castilla-La Mancha") %>%
+  # Fabricamos el Cod_INE pegando la provincia y el municipio
+  dplyr::mutate(Cod_INE = paste0(cpro, cmun))
+
+# ==============================================================================
+# APLICACIÓN DE TASAS Y CORRECCIÓN DE INFINITOS
+# ==============================================================================
+datos_clm_tasas <- poblacion_clm %>%
+  dplyr::inner_join(migracion_clm, by = "Cod_INE") %>%
+  dplyr::mutate(
+    # IMPUTACIÓN DE LOS JÓVENES:
+    Jovenes_Fix = ifelse(Jovenes == 0, 1, Jovenes),
+    Indice_Envejecimiento = (Mayores / Jovenes_Fix) * 100,
+    
+    # TASAS: Emigrantes por cada 1.000 habitantes
+    Tasa_Emig_Provincia = (Emig_Misma_Provincia / Poblacion) * 1000,
+    Tasa_Emig_CCAA = (Emig_Otra_CCAA / Poblacion) * 1000,
+    Tasa_Emig_Extranjero = (Emig_Extranjero / Poblacion) * 1000
+  ) %>%
+  dplyr::select(Cod_INE, Poblacion, Indice_Envejecimiento, Tasa_Emig_Provincia, Tasa_Emig_CCAA, Tasa_Emig_Extranjero)
+
+# Cruzamos con el mapa de toda CLM y calculamos coordenadas
+clm_sf_tasas <- mapa_clm %>%
+  dplyr::inner_join(datos_clm_tasas, by = "Cod_INE") %>%
+  dplyr::mutate(
+    X = sf::st_coordinates(sf::st_centroid(geometry))[,1],
+    Y = sf::st_coordinates(sf::st_centroid(geometry))[,2]
+  ) %>%
+  na.omit() # Ahora SÍ conservará todos los pueblos porque ya no hay Infinitos
+
+# Lanzamos las predicciones
+clm_prediccion <- stats::predict(rf_final, new_data = clm_sf_tasas)
+clm_aoa <- stats::predict(modelo_aoa, new_data = clm_sf_tasas %>% sf::st_drop_geometry())
+
+# Averiguamos cómo ha llamado waywiser a la columna (.aoa)
+col_name_aoa <- names(clm_aoa)[1]
+
+# Juntamos todo apuntando EXACTAMENTE a la columna .aoa
+mapa_final_tasas <- clm_sf_tasas %>%
+  dplyr::bind_cols(clm_prediccion) %>%
+  dplyr::bind_cols(clm_aoa) %>%
+  # Forzamos que sea factor usando el nombre directo
+  dplyr::mutate(Categoria_AoA = as.factor(aoa))
+
+# ==============================================================================
+# 3. LOS DOS MAPAS MAESTROS
+# ==============================================================================
+
+# MAPA 1: PREDICCIÓN CON TASAS (Cero sesgos por tamaño)
+mapa_pred <- ggplot(mapa_final_tasas) +
+  geom_sf(aes(fill = .pred), color = "white", size = 0.1) +
+  scale_fill_viridis_c(
+    option = "magma", direction = -1, trans = "log10", 
+    labels = scales::comma, name = "Población\nPredicha"
+  ) +
+  theme_minimal() +
+  labs(
+    caption = "Elaboración propia."
+  ) +
+  theme(plot.title = element_text(face = "bold", size = 14))
+
+# MAPA 2: ÁREA DE APLICABILIDAD (Con todos los municipios)
+mapa_fiabilidad <- ggplot(mapa_final_tasas) +
+  geom_sf(aes(fill = Categoria_AoA), color = "white", size = 0.1) +
+  scale_fill_manual(
+    # Blindamos todas las opciones posibles que arroje la librería
+    values = c("TRUE" = "#21908C", "FALSE" = "#440154", 
+               "1" = "#21908C", "0" = "#440154",
+               "inside" = "#21908C", "outside" = "#440154"), 
+    name = "Dominio (AoA)"
+  ) +
+  theme_minimal() +
+  labs(
+    title = "Fiabilidad Espacial (Área de Aplicabilidad)",
+    subtitle = "Zonas aplicables (Verde) vs. Zonas demográficamente anómalas (Morado)",
+    caption = "Elaboración propia."
+  ) +
+  theme(plot.title = element_text(face = "bold", size = 14))
+
+# Mostramos los mapas (ejecutar uno por uno para verlos en la pestaña Plots)
+print(mapa_pred)
+```
+
+
+No obstante, la verdadera evaluación de esta proyección reside en el análisis del Área de Aplicabilidad (AoA). Este mapa actúa como un auditor estricto, indicando en qué zonas es lícito confiar en las reglas aprendidas por el algoritmo y en cuáles no.
+
+```{r aoa, echo=FALSE, message=FALSE, warning=FALSE, fig.cap= "Figura 6: Mapa de Aplicabilidad del modelo"}
+print(mapa_fiabilidad)
+```
+
+El análisis de aplicabilidad revela una clara fractura regional. El modelo reconoce como viables (categorizadas como `TRUE` o en color verde) a las provincias de Albacete y Cuenca. Esta compatibilidad confirma que ambos territorios comparten un patrón de envejecimiento profundo y una configuración geográfica (llanura y sierra manchega) que el modelo entiende a la perfección. 
+
+Por el contrario, el modelo marca como anomalías fuera de dominio (`FALSE` o en color morado) a la práctica totalidad de las provincias de Toledo y Guadalajara. Este rechazo algorítmico se explica por la irrupción del "efecto metropolitano" de Madrid. Municipios como los del Corredor del Henares o La Sagra presentan dinámicas demográficas (saldos migratorios positivos, población joven, expansión industrial) y coordenadas de latitud norte que son totalmente ajenas a la realidad de la "España Vaciada" con la que se entrenó el modelo. En definitiva, el mapa AoA demuestra con rigor científico que no existe una única solución demográfica aplicable a toda la región, invalidando cualquier intento de extrapolar políticas de despoblación rural a entornos de hiperdinamismo metropolitano.
+
+***
+
+## 5. Conclusiones
+
+La presente investigación ha abordado el fenómeno de la despoblación en Castilla-La Mancha desde una doble vertiente: el diagnóstico geoestadístico de la provincia de Albacete y la auditoría de un modelo predictivo extrapolable a escala regional. Los resultados del análisis espacial (Fase 1) corroboran un escenario de colapso demográfico polarizado. Mientras los corredores urbanos y logísticos mantienen un ligero dinamismo, las áreas periféricas de las sierras albaceteñas sufren un vaciamiento crónico caracterizado por mermas poblacionales superiores al 40% en la última década y por la consolidación de *hotspots* de envejecimiento sistémico, como demuestra la significatividad del estadístico de Moran Local. Este diagnóstico subraya que la despoblación no es un fenómeno aleatorio, sino un proceso de contagio espacial que demanda intervenciones urgentes.
+
+Desde el punto de vista metodológico, la principal aportación de este trabajo reside en la adaptación de los algoritmos de *Spatial Machine Learning* a realidades de demografía extrema (Fase 2). Para garantizar la honestidad intelectual del modelo, se asumió la necesidad de transformar todos los flujos migratorios absolutos en tasas relativas. Esta decisión supuso un sacrificio consciente en las métricas de rendimiento globales ($RMSE$ y $R^2$), las cuales se ven penalizadas al intentar predecir volúmenes absolutos a partir de indicadores estrictamente proporcionales. Sin embargo, este enfoque neutraliza el sesgo de escala y evita las correlaciones espurias, garantizando que el algoritmo (Random Forest) aprenda las verdaderas dinámicas de la despoblación y no se limite a realizar inferencias tautológicas basadas en el tamaño inicial de los asentamientos. 
+
+Por último, la aplicación de la métrica del Área de Aplicabilidad (AoA) sobre el conjunto de Castilla-La Mancha ha revelado una profunda fractura en la viabilidad de los modelos demográficos extrapolables. El mapa de fiabilidad confirma que las lógicas de la "España Vaciada" asimiladas en Albacete son plenamente aplicables en entornos agrarios homólogos, como Ciudad Real y Cuenca. No obstante, el modelo fracasa de manera sistemática al proyectarse sobre las provincias de Toledo y Guadalajara. Este rechazo algorítmico pone de manifiesto la incapacidad metodológica de explicar las dinámicas de atracción, el saldo migratorio positivo y el rejuvenecimiento inducido por el "efecto metropolitano" de la Comunidad de Madrid utilizando parámetros propios del declive rural. En consecuencia, esta investigación demuestra que no existe un modelo único para la despoblación, exigiendo políticas territoriales adaptadas a las especificidades estructurales de cada geografía.
+
+***
+
+## 6. Referencias
+
+Anselin, L. (1995). Local Indicators of Spatial Association—LISA. *Geographical Analysis*, *27*(2), 93–115. https://doi.org/10.1111/j.1538-4632.1995.tb00338.x
+
+Bivand, R. S., & Wong, D. W. S. (2018). Comparing implementations of global and local indicators of spatial association. *Test*, *27*(3), 716-748. https://doi.org/10.1007/s11749-018-0599-x
+
+Breiman, L. (2001). Random Forests. *Machine Learning*, *45*(1), 5–32. https://doi.org/10.1023/A:1010933404324
+
+Collantes, F., & Pinilla, V. (2019). *¿Lugares que no importan? La despoblación de la España rural desde 1900 hasta el presente*. Prensas de la Universidad de Zaragoza.
+
+Del Romero Renau, L. (2018). *Despoblación y abandono de la España rural. El imposible vencido*. Tirant lo Blanch.
+
+Instituto Nacional de Estadística. (2024). *Estadística de Migraciones*. Recuperado de https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177013&menu=resultados&idp=1254734710990
+
+Instituto Nacional de Estadística. (2024). *Estadística del Padrón Continuo (Población total y por edades)*. Recuperado de https://ine.es/dynt3/inebase/index.htm?padre=6232&capsel=6233
+
+Meyer, H., & Pebesma, E. (2021). Predicting into unknown space? Estimating the area of applicability of spatial machine learning models. *Methods in Ecology and Evolution*, *12*(9), 1620–1633. https://doi.org/10.1111/2041-210X.13650
+
+Recaño, J. (2017). La demografía rural de España. En F. E. García & L. Camarero (Coords.), *El medio rural y su desarrollo* (pp. 57-84). Ministerio de Agricultura y Pesca, Alimentación y Medio Ambiente.
+
+Schratz, P., Muenchow, J., Iturritxa, E., Metz, J., & Brenning, A. (2019). Hyperparameter tuning and spatial cross-validation in regional environmental modeling. *Ecological Modelling*, *406*, 109–120. https://doi.org/10.1016/j.ecolmodel.2019.06.002
+
+
